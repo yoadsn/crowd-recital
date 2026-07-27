@@ -65,21 +65,13 @@ DEV_AUTO_LOGIN_USER_EMAIL=<optional - for development only - automatically login
 *JOB_SESSION_FINALIZATION_INTERVAL_SEC*: Note, the server will also immediately trigger finalization when a recording session ends when this flag is turned on to minimize latency of getting an available session preview.
 
 - Back on the root folder
-- If going with the "No Docker" deployment option - Build & run the Docker image that handles the web site static assets building.
-
-First create a folder to contain the built web client output
-
-`mkdir web_client_dist`
-
-Then build & run the builder image
+- If going with the "No Docker" deployment option - build the web client static assets yourself (requires Node.js + pnpm, see `web_client/package.json` for the pinned `packageManager` version) and place the output in a `web_client_dist` folder at the repo root:
 
 ```
-sudo docker build -t recital-web-app-builder . -f web.Dockerfile && \
-sudo docker run --rm -v $(pwd)/web_client_dist:/app/dist recital-web-app-builder && \
-sudo docker image rm recital-web-app-builder
+cd web_client
+pnpm install --frozen-lockfile
+pnpm run build --outDir ../web_client_dist
 ```
-
-- This will create the `web_client_dist` folder with the static assets inside
 
 - If you run the web server with a non root user (good idea) make sure the created dist folder is owned by that user.
 
