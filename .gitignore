@@ -68,3 +68,6 @@ data/
 
 # Server web client dist folder
 web_client_dist/
+
+# Coding agents personal configs
+.opencode/
