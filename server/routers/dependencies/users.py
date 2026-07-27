@@ -13,9 +13,11 @@ from models.user import User, UserGroups
 from resource_access.users_ra import UsersRA
 from utility.authentication.invites import validate_invite_value
 from utility.authentication.users import (
+    create_user_from_xhost_identification,
     decode_access_token,
     get_access_token_expire_minutes,
 )
+from utility.authentication.xhost_auth import XhostIdentification, get_xhost_identification
 
 AUTH_COOKIE_NAME = "access_token"
 
@@ -93,6 +95,7 @@ async def get_valid_user(
     response: Response,
     authenticated_user_id: Annotated[str, Depends(get_authenticated_user_id)],
     delegated_user_email: Annotated[str, Depends(get_delegated_user_email)],
+    xhost_identification: Annotated[XhostIdentification | None, Depends(get_xhost_identification)],
     google_client_id: str = Depends(Provide[Container.config.auth.google.client_id]),
     dev_auto_login_user_email: str = Depends(Provide[Container.config.auth.dev_auto_login_user_email]),
     users_ra: UsersRA = Depends(Provide[Container.users_ra]),
@@ -102,6 +105,18 @@ async def get_valid_user(
         user = users_ra.get_by_id(authenticated_user_id)
     elif delegated_user_email:
         user = users_ra.get_by_email(delegated_user_email)
+    elif xhost_identification:
+        # xhost verified the visitor's identity (see utility/authentication/xhost_auth.py) -
+        # find or create the local user record by email, mirroring the Google login flow's
+        # find-or-create logic (routers/users.py: login_user), minus the CSRF/form dance
+        # since the identity already arrived pre-verified via the xhost cookie.
+        user = users_ra.get_by_email(xhost_identification.email)
+        if not user:
+            new_user = create_user_from_xhost_identification(xhost_identification)
+            if should_grant_speaker_permission(new_user, invite_value=None):
+                new_user.group = "speaker"
+            user = users_ra.upsert(new_user)
+            user = users_ra.get_by_email(xhost_identification.email)
     elif dev_auto_login_user_email:
         print(f"WARNING: Using DEV_AUTO_LOGIN_USER_EMAIL for development - auto-logging in user: {dev_auto_login_user_email}")
         user = users_ra.get_by_email(dev_auto_login_user_email)

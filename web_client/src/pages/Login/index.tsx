@@ -1,17 +1,20 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import GoogleLogin from "@/components/GoogleLogin";
+import XhostLogin from "@/components/XhostLogin";
 
 import useTrackPageView from "@/analytics/useTrackPageView";
 import ivritAiLogo from "../../assets/ivrit_ai_logo.webp";
 import { UserContext } from "@/context/user";
 import HebrewSoup from "@/components/HebrewSoup/HebrewSoup";
 import SystemTotalStats from "@/components/SystemTotalStats";
+import { EnvConfig } from "@/env/config";
 
 const Login = () => {
   useTrackPageView("login");
   const { t } = useTranslation();
   const { googleLoginProps } = useContext(UserContext);
+  const isXhostAuth = EnvConfig.get("auth_mode") === "xhost";
 
   return (
     <div className="hero min-h-screen">
@@ -30,7 +33,11 @@ const Login = () => {
               </h1>
             </div>
             <div className="card-actions my-4 flex flex-row justify-center">
-              <GoogleLogin {...googleLoginProps} />
+              {isXhostAuth ? (
+                <XhostLogin />
+              ) : (
+                <GoogleLogin {...googleLoginProps} />
+              )}
             </div>
             <div className="text-center">
               <p className="py-2">{t("maroon_factual_leopard_rest")}</p>

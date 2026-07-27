@@ -15,7 +15,10 @@
 FROM node:20-slim AS build-stage
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# Pin pnpm explicitly to match web_client/package.json's "packageManager" field -
+# newer Corepack defaults can otherwise auto-fetch a pnpm release that requires a
+# newer Node than this base image ships, breaking the build.
+RUN corepack enable && corepack prepare pnpm@9.6.0 --activate
 
 WORKDIR /app
 COPY ./web_client .

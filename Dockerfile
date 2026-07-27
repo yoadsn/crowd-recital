@@ -16,7 +16,10 @@
 FROM --platform=$BUILDPLATFORM node:20-slim AS build-stage
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# Pin pnpm explicitly to match web_client/package.json's "packageManager" field -
+# newer Corepack defaults can otherwise auto-fetch a pnpm release that requires a
+# newer Node than this base image ships, breaking the build.
+RUN corepack enable && corepack prepare pnpm@9.6.0 --activate
 
 WORKDIR /app
 COPY ./web_client .
@@ -35,8 +38,9 @@ RUN pnpm run build
 # Start the production container build
 ##
 
-# Python base image
-FROM python:3.11-slim-bookworm AS final-stage
+# Python base image - use xhost's exact warm-base tag (python:3.11-slim) so those
+# base layers are exempt from the platform's charged image-size cap.
+FROM python:3.11-slim AS final-stage
 
 # FFMPEG is needed for the audio processing
 RUN apt-get -y update && apt-get -y upgrade && apt-get install -y --no-install-recommends ffmpeg
@@ -69,4 +73,7 @@ VOLUME /data
 
 EXPOSE 80
 
-ENTRYPOINT [ "uvicorn", "--app-dir=server", "application:app", "--host", "0.0.0.0", "--port", "80"]
+# Run DB migrations (needs cwd=/server, see alembic.ini prepend_sys_path=.)
+# then start uvicorn from the root folder, binding to the platform-injected
+# $PORT when present (falls back to 80 for local `docker run` usage per the README).
+ENTRYPOINT [ "sh", "-c", "cd /server && alembic upgrade head && cd / && exec uvicorn --app-dir=server application:app --host 0.0.0.0 --port ${PORT:-80}" ]

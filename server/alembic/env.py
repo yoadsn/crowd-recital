@@ -31,7 +31,9 @@ env.read_env()
 
 
 def get_url():
-    return env.str("DB_CONNECTION_STR")
+    # Supports both this project's own DB_CONNECTION_STR and xhost's built-in
+    # DATABASE_URL (auto-injected per channel) - DB_CONNECTION_STR wins if both are set.
+    return env.str("DB_CONNECTION_STR", default=None) or env.str("DATABASE_URL")
 
 
 def run_migrations_offline() -> None:

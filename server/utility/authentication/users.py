@@ -12,6 +12,7 @@ from utility.communication.email import Emailer
 from utility.communication.email_templates import agreement_signed_notification_email
 
 from .google_login import GoogleIdentification
+from .xhost_auth import XhostIdentification
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
@@ -59,6 +60,17 @@ def create_user_from_google_id(google_identification: GoogleIdentification):
         name=google_identification.name,
         picture=google_identification.picture,
         google_sub=google_identification.sub,
+    )
+
+
+def create_user_from_xhost_identification(xhost_identification: XhostIdentification):
+    # xhost verified the visitor's Google identity for us (see utility/authentication/xhost_auth.py).
+    # email_verified=True since it came from Google via xhost's own verified dance.
+    return User(
+        email=xhost_identification.email,
+        email_verified=True,
+        name=xhost_identification.name,
+        picture="",
     )
 
 
