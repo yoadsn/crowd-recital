@@ -2,7 +2,26 @@ import os
 from pathlib import Path
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
+
+S3_REGION = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
+
+# `region_name` alone only sets the SigV4 signing region - botocore's default S3
+# addressing_style is "auto", which still resolves to the legacy GLOBAL virtual-hosted
+# endpoint (bucket.s3.amazonaws.com). eu-north-1 (and other AWS "opt-in" regions) don't
+# serve cleanly from that global endpoint, which is exactly the CORS-breaking redirect
+# this was meant to fix. addressing_style="virtual" (combined with region_name) is what
+# actually produces the correct regional endpoint (bucket.s3.<region>.amazonaws.com).
+_S3_CONFIG = Config(region_name=S3_REGION, s3={"addressing_style": "virtual"})
+
+
+def _s3_client():
+    return boto3.client("s3", config=_S3_CONFIG)
+
+
+def _s3_resource():
+    return boto3.resource("s3", config=_S3_CONFIG)
 
 
 class RecitalsContentRA:
@@ -37,7 +56,7 @@ class RecitalsContentRA:
             return False
 
         # upload to S3
-        s3 = boto3.client("s3")
+        s3 = _s3_client()
 
         # ContentType - Should we include?
         try:
@@ -56,7 +75,7 @@ class RecitalsContentRA:
             return False
 
         # remove from S3
-        s3 = boto3.client("s3")
+        s3 = _s3_client()
 
         try:
             s3.delete_object(
@@ -81,7 +100,7 @@ class RecitalsContentRA:
             print("Warning prefix is not provided. Not deleting anything.")
             return False
 
-        s3 = boto3.resource("s3")
+        s3 = _s3_resource()
 
         try:
             # remove from S3 by the object prefix
@@ -132,7 +151,7 @@ class RecitalsContentRA:
             return ""
 
         # Get presigned URL
-        s3 = boto3.client("s3")
+        s3 = _s3_client()
         try:
             response = s3.generate_presigned_url(
                 "get_object",

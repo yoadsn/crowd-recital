@@ -15,8 +15,10 @@ def configure_logging(container):
 
 
 # For out-of-di usage (See Async DB module for the CRUD api stack)
+# Supports both this project's own DB_CONNECTION_STR and xhost's built-in
+# DATABASE_URL (auto-injected per channel) - DB_CONNECTION_STR wins if both are set.
 def get_db_connection_str() -> str:
-    return env("DB_CONNECTION_STR")
+    return env("DB_CONNECTION_STR", default=None) or env("DATABASE_URL")
 
 
 def configure(container: "Container"):
@@ -26,7 +28,15 @@ def configure(container: "Container"):
     container.config.db.connection_str.from_value(get_db_connection_str())
 
     container.config.cors.allow_origins.from_value(env.list("CORS_ALLOW_ORIGINS", []))
-    container.config.auth.google.client_id.from_value(env("GOOGLE_CLIENT_ID"))
+    # AUTH_MODE selects which login flow the client offers: "google" (default) or "xhost"
+    # (xhost's built-in Google sign-in via the __Host-xhost_id identity cookie).
+    # Both code paths are always wired up server-side regardless of this flag.
+    container.config.auth.mode.from_value(env("AUTH_MODE", default="google"))
+    # Required to verify the xhost identity cookie's "aud" claim - must equal the exact
+    # channel hostname (e.g. crowd-recital-yoad.xhostd.com). Only needed when AUTH_MODE=xhost.
+    container.config.auth.xhost_audience.from_value(env("AUTH_XHOST_AUDIENCE", default=None))
+    # Not required when AUTH_MODE=xhost
+    container.config.auth.google.client_id.from_value(env("GOOGLE_CLIENT_ID", default=""))
     container.config.auth.delegated_identity_secret_key.from_value(env("DELEGATED_IDENTITY_SECRET_KEY"))
     container.config.auth.access_token_secret_key.from_value(env("ACCESS_TOKEN_SECRET_KEY"))
     container.config.auth.disable_auto_speaker_approve.from_value(env.bool("DISABLE_AUTO_SPEAKER_APPROVAL"))

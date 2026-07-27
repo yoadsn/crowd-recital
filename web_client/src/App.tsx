@@ -85,15 +85,20 @@ function AppWithAuthContext() {
   );
 }
 
-let TrackedApp = AppWithProviders;
+// Auth must always be wired up (it provides the real UserContext that the
+// router relies on for its beforeLoad guards) - PostHog is optional and only
+// wraps around it when configured. These two concerns used to be conflated:
+// when PostHog was unconfigured, AppWithAuthContext (and therefore the real
+// auth context) was skipped entirely, leaving the router's `auth` context
+// value undefined and crashing every route's beforeLoad guard.
 const posthog = getPosthogClient();
-if (posthog) {
-  TrackedApp = () => (
-    <PostHogProvider client={posthog}>
-      <AppWithAuthContext />
-    </PostHogProvider>
-  );
-}
+const TrackedApp = posthog
+  ? () => (
+      <PostHogProvider client={posthog}>
+        <AppWithAuthContext />
+      </PostHogProvider>
+    )
+  : AppWithAuthContext;
 
 const WrappedErrorBoundedApp = withTrackedErrorBoundary(TrackedApp);
 

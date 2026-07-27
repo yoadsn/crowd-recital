@@ -14,6 +14,7 @@ import {
 import { User } from "../../types/user";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { INVITE_STORAGE_KEY } from "@/env/invites";
+import { EnvConfig } from "@/env/config";
 
 const reportLogin = (posthog: PostHog, loginResponse: LoginResponse) => {
   try {
@@ -77,7 +78,13 @@ export default function useLogin() {
       logout().then(() => {
         setActiveUser(null);
         setAccessToken("");
-        if (reload) window.location.reload();
+        if (EnvConfig.get("auth_mode") === "xhost") {
+          // Also end the xhost identity session (clears __Host-xhost_id),
+          // otherwise the visitor would be silently re-authenticated on next load.
+          window.location.href = "/xhost-auth/logout?return_to=/";
+        } else if (reload) {
+          window.location.reload();
+        }
       });
     },
     [setActiveUser, setAccessToken],
