@@ -129,9 +129,13 @@ class StatsRA:
             totals = results.one_or_none()
 
             if totals is not None:
+                # SUM() with no GROUP BY over zero matching rows still returns exactly one
+                # row, with SUM(duration) = NULL (not zero rows) - so total_duration can be
+                # None here even though `totals` itself isn't. Only ever hit on an empty/fresh
+                # database (e.g. a brand-new preview channel with no uploaded sessions yet).
                 return TotalStats(
-                    total_duration=totals.total_duration,
-                    total_recordings=totals.total_recordings,
+                    total_duration=totals.total_duration or 0,
+                    total_recordings=totals.total_recordings or 0,
                 )
             else:
                 return TotalStats(total_duration=0, total_recordings=0)
