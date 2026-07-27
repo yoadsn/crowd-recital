@@ -12,7 +12,7 @@
 # Build the Vite app static site
 ##
 
-FROM node:20-slim AS build-stage
+FROM node:22-slim AS build-stage
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 # Pin pnpm explicitly to match web_client/package.json's "packageManager" field -
