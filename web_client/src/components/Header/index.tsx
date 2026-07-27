@@ -79,15 +79,19 @@ const Header = () => {
               className="avatar placeholder btn btn-circle btn-ghost"
             >
               <div className="placeholder w-10 rounded-full">
-                {imgError ? (
-                  <LucideMenu />
-                ) : (
+                {/* xhost-derived identities have no picture claim (only sub/email/name -
+                    see server/utility/authentication/xhost_auth.py) - fall back to a plain
+                    icon instead of an <img> with an empty/missing src, which otherwise
+                    renders as a broken-image glyph rather than reliably firing onError. */}
+                {!imgError && auth.user.picture ? (
                   <img
                     alt="menu"
                     src={auth.user.picture}
                     aria-hidden="true"
                     onError={() => setImgError(true)}
                   />
+                ) : (
+                  <LucideMenu />
                 )}
               </div>
             </div>
