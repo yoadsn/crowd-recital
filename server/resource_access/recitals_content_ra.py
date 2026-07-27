@@ -4,6 +4,16 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 
+S3_REGION = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
+
+
+def _s3_client():
+    return boto3.client("s3", region_name=S3_REGION)
+
+
+def _s3_resource():
+    return boto3.resource("s3", region_name=S3_REGION)
+
 
 class RecitalsContentRA:
 
@@ -37,7 +47,7 @@ class RecitalsContentRA:
             return False
 
         # upload to S3
-        s3 = boto3.client("s3")
+        s3 = _s3_client()
 
         # ContentType - Should we include?
         try:
@@ -56,7 +66,7 @@ class RecitalsContentRA:
             return False
 
         # remove from S3
-        s3 = boto3.client("s3")
+        s3 = _s3_client()
 
         try:
             s3.delete_object(
@@ -81,7 +91,7 @@ class RecitalsContentRA:
             print("Warning prefix is not provided. Not deleting anything.")
             return False
 
-        s3 = boto3.resource("s3")
+        s3 = _s3_resource()
 
         try:
             # remove from S3 by the object prefix
@@ -132,7 +142,7 @@ class RecitalsContentRA:
             return ""
 
         # Get presigned URL
-        s3 = boto3.client("s3")
+        s3 = _s3_client()
         try:
             response = s3.generate_presigned_url(
                 "get_object",
