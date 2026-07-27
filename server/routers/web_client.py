@@ -5,6 +5,8 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import Scope
 
 from containers import Container
 
@@ -69,6 +71,27 @@ def get_env_config(
     return PlainTextResponse(content=config_script_content, headers={"Content-Type": "application/javascript"})
 
 
+class SPAStaticFiles(StaticFiles):
+    """Serves the built SPA's static assets, falling back to index.html for any
+    unmatched non-asset path so client-side routes (e.g. /documents) work on a
+    direct navigation or full page reload/refresh.
+
+    This mirrors the SPA rewrite this app's README documents for an nginx
+    reverse proxy in front of it (`rewrite ^.*$ / break;`, with /assets served
+    directly) - xhost's Caddy edge proxies straight to this container with no
+    such rewrite, so without this the xhost-auth login redirect (return_to can
+    be any client route) and plain page refreshes would 404 at this server.
+    """
+
+    async def get_response(self, path: str, scope: Scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and not path.startswith("assets/"):
+                return await super().get_response("index.html", scope)
+            raise
+
+
 @inject
 def get_web_client_app(dist_folder: str = Provide[Container.config.web_client_dist_folder]) -> FastAPI:
-    return StaticFiles(directory=pathlib.Path(dist_folder), html=True)
+    return SPAStaticFiles(directory=pathlib.Path(dist_folder), html=True)
